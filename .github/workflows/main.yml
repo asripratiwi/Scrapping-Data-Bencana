@@ -1,4 +1,4 @@
-name: syntax_web_scrapping
+name: scrap_bencana
 
 on:
   schedule:
@@ -23,5 +23,5 @@ jobs:
         install.packages("tidyverse", dependencies = TRUE)
         install.packages("mongolite")
       shell: Rscript {0} 
-    - name: Scrape Data syntax_web_scrapping
-      run: Rscript syntax_web_scrapping.R
+    - name: Scrape Data scrap_bencana
+      run: Rscript scrap_bencana.R
