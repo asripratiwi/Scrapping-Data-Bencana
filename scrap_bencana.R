@@ -9,12 +9,10 @@ message('Scraping Data')
 url <- "https://dibi.bnpb.go.id/xdibi2?tb=1"
 page <- read_html(url)
 
-
 titles <- page %>% html_nodes(xpath = "//a[@data-toggle='popover']") %>% html_text()
 dates <- page %>% html_nodes(xpath = "//small[@class='date text-danger']") %>% html_text()
 bodypage <- page %>% html_nodes(xpath = "//div[@class='d-flex flex-row']") %>% html_text()
 links <- page %>% html_nodes(xpath = "//a[@data-toggle='popover']") %>% html_attr("href")
-
 
 data <- data.frame(
   time_scraped = Sys.time(),
@@ -24,19 +22,20 @@ data <- data.frame(
   links = head(links, ),
   stringsAsFactors = FALSE
 )
-View(data)
+
+print(data)  # Use print instead of View
 
 # MONGODB
 message('Input Data to MongoDB Atlas')
 
 # Connection String dari MongoDB Atlas
-conn_string<-Sys.getenv("ATLAS_URL")
+conn_string <- Sys.getenv("ATLAS_URL")
 
 # Membuka koneksi ke MongoD Atlas
 atlas_conn <- mongo(
   collection = Sys.getenv("ATLAS_COLLECTION"),
-  db         = Sys.getenv("ATLAS_DB"),
-  url        = conn_string
+  db = Sys.getenv("ATLAS_DB"),
+  url = conn_string
 )
 
 # Input Data ke MongoDB Atlas
