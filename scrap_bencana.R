@@ -23,8 +23,6 @@ data <- data.frame(
   stringsAsFactors = FALSE
 )
 
-print(data)  # Use print instead of View
-
 # MONGODB
 message('Input Data to MongoDB Atlas')
 
