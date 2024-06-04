@@ -18,10 +18,10 @@ links <- page %>% html_nodes(xpath = "//a[@data-toggle='popover']") %>% html_att
 
 data <- data.frame(
   time_scraped = Sys.time(),
-  titles = head(titles, 20),
-  dates = head(dates, 20),
-  bodypage = head(bodypage, 20),
-  links = head(links, 20),
+  titles = head(titles, ),
+  dates = head(dates, ),
+  bodypage = head(bodypage, ),
+  links = head(links, ),
   stringsAsFactors = FALSE
 )
 View(data)
