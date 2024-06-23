@@ -1,0 +1,475 @@
+---
+title: "Olah Data Bencana dari Scrapping Web BNPB"
+author: "Asri Pratiwi (NIM. G1501231014)"
+date: "2024-06-21"
+output: html_document
+---
+
+```{r}
+library(tm) #text mining dan pemrosesan teks.
+library(dplyr) #manipulasi data
+library(wordcloud) #membuat awan kata.
+library(ggplot2) #visualisasi data 
+library(lubridate) #manipulasi dan parsing data waktu
+library(tidytext) #pemrosesan teks dengan prinsip tidy data.
+library(tidyr) #mempermudah transformasi data menjadi bentuk tidy.
+```
+
+
+```{r}
+# Memuat data
+library(readxl)
+
+# Membaca file Excel
+data <- read_excel("bencana_update.xlsx", sheet = "Sheet1")
+```
+
+
+## Eksplorasi Data
+```{r}
+# Menampilkan beberapa baris pertama data
+head(data)
+```
+
+
+```{r}
+# Menampilkan ringkasan struktur data
+str(data)
+```
+
+
+```{r}
+# Memeriksa jumlah data yang hilang
+sapply(data, function(x) sum(is.na(x)))
+```
+
+# Visualisasi frekuensi kejadian tipe bencana menggunakan diagram batang
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Menghitung frekuensi kejadian setiap tipe bencana
+frekuensi_bencana <- data %>%
+  group_by(types) %>%
+  summarise(frekuensi = n())
+
+# Mengurutkan data berdasarkan frekuensi
+frekuensi_bencana <- frekuensi_bencana %>%
+  arrange(desc(frekuensi))
+
+# Membuat diagram batang frekuensi kejadian tipe bencana
+ggplot(frekuensi_bencana, aes(x = reorder(types, -frekuensi), y = frekuensi, fill = types)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = frekuensi), vjust = 1.2, color = "black", size = 5) +
+  labs(title = "Frekuensi Kejadian Tipe Bencana", x = "(Tipe Bencana)", y = "(Frekuensi)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 11),
+    axis.text.y = element_text(size = 10),
+    legend.position = "none"
+  ) +
+  scale_fill_brewer(palette = "Spectral")
+
+```
+
+
+
+
+Visualisasi klasifikasi tipe bencana menggunakan diagram lingkaran (pie chart)
+```{r}
+# Menghitung frekuensi kejadian setiap tipe bencana
+frekuensi_bencana <- table(data$types)
+
+# Menghitung persentase setiap tipe bencana
+persentase_bencana <- prop.table(frekuensi_bencana) * 100
+
+# Membuat diagram lingkaran klasifikasi tipe bencana
+pie(persentase_bencana, labels = paste0(names(persentase_bencana), " (", round(persentase_bencana, 1), "%)"),
+    main = "Klasifikasi Tipe Bencana", col = rainbow(length(persentase_bencana)))
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(RColorBrewer)
+
+# Menghitung frekuensi kejadian setiap tipe bencana
+frekuensi_bencana <- data %>%
+  group_by(types) %>%
+  summarise(frekuensi = n())
+
+# Menghitung persentase setiap tipe bencana
+frekuensi_bencana <- frekuensi_bencana %>%
+  mutate(persentase = (frekuensi / sum(frekuensi)) * 100)
+
+# Membuat diagram lingkaran klasifikasi tipe bencana
+ggplot(frekuensi_bencana, aes(x = "", y = persentase, fill = types)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar(theta = "y") +
+  labs(title = "Klasifikasi Tipe Bencana", fill = "Tipe Bencana") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid = element_blank()
+  ) +
+  scale_fill_brewer(palette = "Set3") +
+  geom_text(aes(label = paste0(round(persentase, 1), "%")), 
+            position = position_stack(vjust = 0.5), color = "black", size = 1.5)
+
+```
+
+
+
+Lokasi
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(RColorBrewer)
+
+# Menghitung frekuensi bencana per kabupaten/kota
+frekuensi_kabkota <- data %>%
+  group_by(location) %>%
+  summarise(frekuensi = n()) %>%
+  arrange(desc(frekuensi))
+
+# Membuat diagram batang frekuensi bencana per kabupaten/kota
+ggplot(frekuensi_kabkota, aes(x = reorder(location, -frekuensi), y = frekuensi, fill = location)) +
+  geom_bar(stat = "identity") +
+  coord_flip() + # Membuat batang horizontal untuk label yang lebih mudah dibaca
+  labs(title = "Frekuensi Bencana per Kabupaten/Kota", x = "(Kabupaten/Kota)", y = "(Frekuensi)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    legend.position = "none"
+  ) +
+  scale_fill_manual(values = colorRampPalette(brewer.pal(9, "Set1"))(length(frekuensi_kabkota$location)))
+
+```
+
+
+
+```{r}
+# Melihat jenis-jenis bencana yang ada di kolom 'types'
+unique_types <- unique(data$types)
+
+# Menampilkan jenis-jenis bencana
+print(unique_types)
+```
+```{r}
+# Menambahkan kolom kategori berdasarkan jenis bencana
+data <- data %>%
+  mutate(category = case_when(
+    types %in% c("Tanah Longsor", "Angin Puting Beliung", "Pohon Tumbang", "Angin Kencang", "Banjir", "Gelombang Pasang Air Laut") ~ "akibat alam",
+    types %in% c("Kebakaran Rumah", "Orang Hanyut Tenggelam", "Rumah Roboh", "Evakuasi Hewan Liar") ~ "manusia",
+    TRUE ~ "lainnya"
+  ))
+
+# Menampilkan data dengan kolom kategori baru
+head(data)
+```
+
+Frekuensi Bencana per jenis dan tanggal
+
+```{r}
+# Mengubah kolom 'dates' menjadi tipe Date
+data <- data %>%
+  mutate(dates = as.Date(dates, format = "%d-%m-%Y"))
+
+# Menghitung frekuensi bencana per jenis dan tanggal
+freq_per_date_type <- data %>%
+  group_by(dates, types) %>%
+  summarise(count = n()) %>%
+  arrange(dates)
+
+# Stacked bar plot dengan tanggal penuh pada sumbu x
+ggplot(freq_per_date_type, aes(x = dates, y = count, fill = types)) +
+  geom_bar(stat = "identity") +
+  scale_x_date(date_labels = "%d-%m-%Y", date_breaks = "1 day") +
+  labs(title = "Frekuensi Bencana per Jenis dan Tanggal", x = "Tanggal", y = "Frekuensi") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 5, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 10)
+  ) +
+  scale_fill_manual(values = c(
+    "Kebakaran Rumah" = "#FF5733", "Tanah Longsor" = "#33FF57", "Angin Puting Beliung" = "#3357FF",
+    "Pohon Tumbang" = "#FF33A1", "Angin Kencang" = "#FFAA33", "Banjir" = "#AA33FF",
+    "Gelombang Pasang Air Laut" = "#33FFAA", "Orang Hanyut Tenggelam" = "#FF5733",
+    "Rumah Roboh" = "#AAFF33", "Evakuasi Hewan Liar" = "#5733FF"
+  ))
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+
+# Mengubah kolom 'dates' menjadi tipe Date
+data <- data %>%
+  mutate(dates = as.Date(dates, format = "%d-%m-%Y"))
+
+# Menghitung frekuensi bencana per jenis dan tanggal
+freq_per_date_type <- data %>%
+  group_by(dates, types) %>%
+  summarise(count = n()) %>%
+  arrange(dates)
+
+# Membuat data dalam format wide untuk heatmap
+heatmap_data <- dcast(freq_per_date_type, dates ~ types, value.var = "count", fill = 0)
+
+# Plot heatmap
+ggplot(melt(heatmap_data, id.vars = "dates"), aes(x = dates, y = variable, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "darkred") +
+  scale_x_date(date_breaks = "1 day", date_labels = "%d-%m-%Y") + # Menambahkan skala tanggal
+  labs(title = "Intensitas Bencana per Tipe dan Tanggal", x = "(Tanggal)", y = "(Tipe Bencana)", fill = "Frekuensi") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 10)
+  )
+
+```
+
+
+```{r}
+# Menghitung frekuensi bencana per tanggal
+freq_per_date <- data %>%
+  group_by(dates) %>%
+  summarise(count = n()) %>%
+  arrange(dates)
+
+# Menampilkan data frekuensi
+head(freq_per_date)
+
+library(ggplot2)
+
+# Plot line plot frekuensi bencana per tanggal
+ggplot(freq_per_date, aes(x = dates, y = count)) +
+  geom_line(size = 1.2, color = "#221E21") +
+  geom_point(size = 3, color = "#221E21") +
+  scale_x_date(date_labels = "%d-%m-%Y", date_breaks = "1 day") +
+  labs(title = "Frekuensi Bencana per Tanggal", x = "Tanggal", y = "Frekuensi") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 10)
+  )
+
+```
+# Menambahkan kolom kategori berdasarkan jenis bencana
+```{r}
+# Menambahkan kolom kategori berdasarkan jenis bencana
+data <- data %>%
+  mutate(category = case_when(
+    types %in% c("Tanah Longsor", "Angin Puting Beliung", "Pohon Tumbang", "Angin Kencang", "Banjir", "Gelombang Pasang Air Laut") ~ "akibat alam",
+    types %in% c("Kebakaran Rumah", "Orang Hanyut Tenggelam", "Rumah Roboh", "Evakuasi Hewan Liar") ~ "manusia",
+    TRUE ~ "lainnya"
+  ))
+
+# Menampilkan data dengan kolom kategori baru
+head(data)
+```
+
+```{r}
+# Menghitung frekuensi bencana per kategori
+freq_per_category <- data %>%
+  group_by(category) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(viridis)
+library(RColorBrewer)
+
+# Opsi 2: Menggunakan palet warna dari RColorBrewer
+ggplot(freq_per_category, aes(x = reorder(category, -count), y = count, fill = category)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count), vjust = 1.5, color = "black", size = 5) +
+  labs(title = "Frekuensi Bencana per Kategori", x = "Kategori", y = "Frekuensi") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10)
+  ) +
+  scale_fill_manual(values = colorRampPalette(brewer.pal(9, "Set1"))(length(unique(freq_per_category$category))))
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Plot bar plot dengan anotasi nilai
+ggplot(freq_per_category, aes(x = reorder(category, -count), y = count, fill = category)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count), vjust = 1.5, color = "black", size = 10) +
+  labs(title = "Frekuensi Bencana per Kategori", x = "Kategori", y = "Frekuensi") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10)
+  ) +
+  scale_fill_manual(values = c("akibat alam" = "#4CAF50", "manusia" = "#F44336", "lainnya" = "#FFC107"))
+
+```
+
+
+```{r}
+# Menggabungkan teks dari kolom 'bodypage'
+text_data <- paste(data$bodypage, collapse = " ")
+```
+
+
+```{r}
+# Membuat korpus teks
+corpus <- Corpus(VectorSource(text_data))
+```
+
+```{r}
+# Menghitung frekuensi bencana per lokasi
+freq_per_location <- data %>%
+  group_by(location) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+# Plot frekuensi bencana per lokasi
+ggplot(freq_per_location, aes(x = reorder(location, -count), y = count, fill = location)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count), vjust = -0.5, color = "white") +
+  labs(title = "Frekuensi Bencana per Lokasi", x = "Lokasi", y = "Frekuensi") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r}
+# Menggabungkan teks dari kolom 'bodypage'
+text_data <- paste(data$bodypage, collapse = " ")
+#write.csv(rev(sort(table(tolower(unlist(strsplit(text_data,split= " ")))))), file = "CEK.csv")
+
+# Mengganti spasi dengan underscore pada kata-kata tertentu
+text_data <- gsub("angin kencang", "angin_kencang", text_data, ignore.case = TRUE)
+text_data <- gsub("puting beliung", "puting_beliung", text_data, ignore.case = TRUE)
+text_data <- gsub("pohon tumbang", "pohon_tumbang", text_data, ignore.case = TRUE)
+text_data <- gsub("evakuasi hewan liar", "evakuasi_hewan_liar", text_data, ignore.case = TRUE)
+text_data <- gsub("curah hujan tinggir", "hujan_lebat", text_data, ignore.case = TRUE)
+text_data <- gsub("hujan lebat", "hujan_lebat", text_data, ignore.case = TRUE)
+text_data <- gsub("gelombang pasang", "gelombang_pasang", text_data, ignore.case = TRUE)
+text_data <- gsub("orang hanyut tenggelam", "orang_hanyut_tenggelam", text_data, ignore.case = TRUE)
+```
+
+```{r}
+# # Mendefinisikan stopwords khusus untuk bahasa Indonesia
+# custom_stopwords <- c(
+#   "yang", "dan", "di", "ke", "dari", "ini", "itu", "untuk", "dengan", "pada", "adalah", "sebagai", "juga", "dalam", "tidak", "akan", 
+#   "atau", "penyebab", "setelah", "pukul", "terjadi", "hari", "lokasi", "kejadian", "penyebab", "kecamatan", "ada", "sumber", "bpbd", 
+#   "juni", "cukup", "kabupaten", "wib", "disertai", "kota", "tanggal", "rumah", "desa", "kecepatan", "rabu", "sabtu", "malam", "kota", 
+#   "akses", "korban", "berlangsung", "rusak", "selama", "batu", "terdampak", "wita", "pusdalops", "kidul", "optik", "roda", "silang", 
+#   "kec", "jiwa", "menyebabkan", "unit", "satu", "akibat", "sehingga", "lainnya", "mengakibatkan", "mulai", "terjadinya", "ketahui", 
+#   "sekira", "ukuran", "sekitar", "jumat", "mei", "orang", "durasi", "menimpa", "adanya", "waktu", "dini", "dampak", "senin", "barat", 
+#   "bagian", "pemilik", "warga", "beberapa", "saat", "tinggi", "selasa", "karena", "mengalami", "sudah", "pir", "nihil", "iii", "kab","ulu","lama")
+```
+
+
+```{r}
+library(tm)
+# Membuat korpus teks
+corpusbody <- Corpus(VectorSource(text_data))
+```
+
+```{r}
+library(magrittr) 
+# Membersihkan teks
+corpusbody <- corpusbody %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(removeNumbers) %>%
+  #tm_map(removeWords, custom_stopwords) %>%
+  tm_map(stripWhitespace)
+```
+
+```{r}
+# Daftar kata yang ingin ditampilkan
+desired_words <- c("anginkencang", "hujanlebat", "putingbeliung", "longsor", "banjir", "kebakaran", "cuaca", "kebakaran", "evakuasihewanliar", "hujan", "angin", "tenggelam","hanyut", "roboh", "gelombangpasang", "rusak","pohon", "tumbang","sungai", "jalan","bangunan")
+
+# Filter teks berdasarkan daftar kata yang diinginkan
+filter_corpus <- function(corpus, words) {
+  content <- sapply(corpus, as.character)
+  filtered_content <- lapply(content, function(text) {
+    word_list <- unlist(strsplit(text, "\\s+"))
+    filtered_words <- word_list[word_list %in% words]
+    paste(filtered_words, collapse = " ")
+  })
+  Corpus(VectorSource(filtered_content))
+}
+
+corpus_filtered <- filter_corpus(corpusbody, desired_words)
+```
+
+
+```{r}
+# Membuat dokumen term matrix
+dtm <- TermDocumentMatrix(corpus_filtered)
+matrix <- as.matrix(dtm)
+words <- sort(rowSums(matrix), decreasing = TRUE)
+df <- data.frame(word = names(words), freq = words)
+```
+
+```{r}
+# Membuat wordcloud
+library(wordcloud)
+set.seed(1234) # Untuk reproduktibilitas
+wordcloud(words = df$word, freq = df$freq, min.freq = 2, 
+          max.words = 200, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
