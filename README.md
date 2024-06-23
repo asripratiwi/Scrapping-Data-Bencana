@@ -3,7 +3,7 @@ Web-Scrapping Data Bencana di Indonesia
 
 
 <p align="center" width="80%">
-    <img width="60%" src="https://github.com/asripratiwi/Scrapping-Data-Bencana/blob/main/digibnpb.png">
+    <img width="60%" src="https://github.com/asripratiwi/Scrapping-Data-Bencana/blob/main/dibibnpb.png">
 </p>
 <div align="center">
 
